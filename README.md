@@ -9,6 +9,11 @@ H(delta) = H0 + sum_i delta_i H_i
 ```
 
 and compares exact simulation error with the local prediction from the quantum Fisher information matrix (QFIM).
+Throughout the current code, `exact_error`, `trotter_error`, and related plotted errors are pure-state Bures distances,
+
+```text
+D_B(|psi>, |phi>) = sqrt(2 * (1 - |<psi|phi>|)).
+```
 
 ## File Structure
 
@@ -31,6 +36,9 @@ Run fixed-n comparisons between different initial states.
 run_qfi_scaling.py
 Run QFI scaling with system size n.
 
+run_trotter_error.py
+Run Trotter-Suzuki error as an effective Hamiltonian perturbation.
+
 line_figures.ipynb
 Plot one line-scan dataset.
 
@@ -42,6 +50,9 @@ Plot fixed-n initial-state comparison datasets.
 
 qfi_scaling.ipynb
 Plot QFI scaling datasets.
+
+trotter_error_figures.ipynb
+Plot Trotter error versus effective-perturbation QFI.
 ```
 
 There is intentionally no single `run.py` now. Each experiment has its own runner, so the parameters you usually change are near the top of the corresponding file.
@@ -105,6 +116,7 @@ python run_line.py
 python run_grid2d.py
 python run_state_comparison.py
 python run_qfi_scaling.py
+python run_trotter_error.py
 ```
 
 Each script also has a tiny smoke-test mode:
@@ -114,6 +126,7 @@ python run_line.py --smoke
 python run_grid2d.py --smoke
 python run_state_comparison.py --smoke
 python run_qfi_scaling.py --smoke
+python run_trotter_error.py --smoke
 ```
 
 Smoke tests use small `n` and very few scan points. They are useful for checking that code changes still run.
@@ -143,6 +156,11 @@ data/
     dataset_name/
       config.json
       results.npz
+
+  trotter_error/
+    dataset_name/
+      config.json
+      results.npz
 ```
 
 The folder name is generated automatically from the run parameters:
@@ -166,6 +184,7 @@ data/line/ising1d__tfim__xfield-zfield__plus__line__N10/
 data/grid2d/ising1d__tfim__xfield-zfield__plus__grid2d__N10/
 data/state_comparison/ising1d__tfim__xfield-zfield__ghz__line__N10/
 data/qfi_scaling/ising1d__tfim__xfield-zfield__qfi-scaling__N2-N10/
+data/trotter_error/ising1d__tfim__trotter-error__N6/
 ```
 
 Old datasets may still exist directly under `data/` from earlier versions. New scripts write into the grouped folders above.
@@ -372,6 +391,30 @@ plt.legend()
 plt.show()
 ```
 
+### Trotter-Suzuki Error
+
+Produced by `run_trotter_error.py`.
+
+This experiment computes the exact unitary `exp(-i H t)` and the product-formula unitary `U_PF`.
+It then defines an effective Hamiltonian by
+
+```text
+H_eff = (i / t) log(U_PF)
+DeltaH = H_eff - H
+```
+
+and compares the true Trotter Bures error with the local QFI prediction for the effective perturbation `DeltaH`.
+
+```text
+orders          shape (num_orders,)
+reps            shape (num_reps,)
+state_labels    shape (num_states,)
+trotter_error   shape (num_orders, num_states, num_reps)
+qfi_effective   shape (num_orders, num_states, num_reps)
+qfi_error       shape (num_orders, num_states, num_reps)
+ratio           shape (num_orders, num_states, num_reps)
+```
+
 ### 2D Grid Scans
 
 Produced by `run_grid2d.py`.
@@ -420,6 +463,7 @@ line_figures.ipynb      reads data/line/
 grid2d_figures.ipynb    reads data/grid2d/
 state_comparison.ipynb  reads data/state_comparison/
 qfi_scaling.ipynb       reads data/qfi_scaling/
+trotter_error_figures.ipynb reads data/trotter_error/
 ```
 
 The notebooks scan their data directory and choose a matching dataset automatically. They prefer full datasets over `__smoke` datasets.

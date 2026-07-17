@@ -104,7 +104,7 @@ def Simulation_error_single_variable(delta, h0, psi, time):
     psi_t = jnp.asarray(psi.evolve(evolution_operator).data)
     psi0 = jnp.asarray(psi.data)
     overlap = psi0.conj().T @ psi_t
-    return jnp.sqrt(1 - jnp.abs(overlap) ** 2)
+    return pure_state_bures_distance_from_overlap(overlap)
 
 
 def construct_H(delta, H_list):
@@ -142,7 +142,13 @@ def General_Simulation_error(delta, psi0, H_list, time):
     real = state(delta, psi0, H_list, time)
     ideal = state(jnp.zeros_like(delta), psi0, H_list, time)
     overlap = ideal.conj().T @ real
-    return jnp.sqrt(1 - jnp.abs(overlap) ** 2)
+    return pure_state_bures_distance_from_overlap(overlap)
+
+
+def pure_state_bures_distance_from_overlap(overlap):
+    """Bures distance sqrt(2 * (1 - |<psi|phi>|)) for pure states."""
+    fidelity_sqrt = jnp.minimum(jnp.abs(overlap), 1.0)
+    return jnp.sqrt(jnp.maximum(0.0, 2.0 * (1.0 - fidelity_sqrt)))
 
 
 def _first_order_step(terms, dt):

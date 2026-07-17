@@ -159,6 +159,14 @@ def automatic_dataset_base(h0, perturbations, initial_state, scan):
                 "qfi-scaling",
             ]
         )
+    if scan["type"] == "trotter_error":
+        return "__".join(
+            [
+                "ising1d",
+                slug(h0.get("name", "h0")),
+                "trotter-error",
+            ]
+        )
 
     parts = [
         "ising1d",
@@ -228,6 +236,20 @@ def hamiltonian_matrix(n, params):
     return jnp.asarray(Nearest_Neighbour_1d(n=n, **params).ham.to_matrix())
 
 
+def build_sparse_h_list(config):
+    n = config["n"]
+    h0 = hamiltonian_sparse_matrix(n, config["H0"]["params"])
+    perturbations = [
+        hamiltonian_sparse_matrix(n, item["params"])
+        for item in config["perturbations"]
+    ]
+    return [h0, *perturbations]
+
+
+def hamiltonian_sparse_matrix(n, params):
+    return Nearest_Neighbour_1d(n=n, **params).ham.to_matrix(sparse=True)
+
+
 def run_line_scan(config):
     psi0, h_list = build_problem(config)
     psi0_np = np.asarray(psi0)
@@ -267,9 +289,12 @@ def run_line_scan(config):
 
 def run_grid2d_scan(config):
     psi0, h_list = build_problem(config)
+    psi0_np = np.asarray(psi0)
+    h_list_np = build_sparse_h_list(config)
     time = config["time"]
     delta_0_values = linspace_from_config(config["scan"]["delta_0"])
     delta_1_values = linspace_from_config(config["scan"]["delta_1"])
+    ideal_state = evolve_state(h_list_np[0], psi0_np, time)
 
     qfim = np.asarray(General_QFI(jnp.zeros(2), psi0, h_list, time))
     exact_error_grid = np.zeros((len(delta_1_values), len(delta_0_values)))
@@ -278,8 +303,8 @@ def run_grid2d_scan(config):
     for row, delta_1 in enumerate(delta_1_values):
         for col, delta_0 in enumerate(delta_0_values):
             delta = np.asarray([delta_0, delta_1])
-            exact_error_grid[row, col] = float(
-                General_Simulation_error(jnp.asarray(delta), psi0, h_list, time)
+            exact_error_grid[row, col] = simulation_error_np(
+                delta, psi0_np, h_list_np, time, ideal_state
             )
             qfi_error_grid[row, col] = quadratic_error(delta[None, :], qfim)[0]
 
@@ -339,7 +364,12 @@ def simulation_error_np(delta, psi0, h_list, time, ideal_state):
     hamiltonian = construct_h_np(delta, h_list)
     real_state = evolve_state(hamiltonian, psi0, time)
     overlap = np.vdot(ideal_state, real_state)
-    return np.sqrt(max(0.0, 1 - np.abs(overlap) ** 2))
+    return pure_state_bures_distance_np(overlap)
+
+
+def pure_state_bures_distance_np(overlap):
+    fidelity_sqrt = min(abs(overlap), 1.0)
+    return np.sqrt(max(0.0, 2.0 * (1.0 - fidelity_sqrt)))
 
 
 def evolve_state(hamiltonian, psi0, time):
@@ -347,6 +377,11 @@ def evolve_state(hamiltonian, psi0, time):
 
 
 def construct_h_np(delta, h_list):
+    if isinstance(h_list, (list, tuple)):
+        hamiltonian = h_list[0].copy()
+        for coeff, term in zip(delta, h_list[1:]):
+            hamiltonian = hamiltonian + coeff * term
+        return hamiltonian
     return h_list[0] + np.einsum("k,kij->ij", delta, h_list[1:])
 
 
