@@ -1,6 +1,6 @@
 import argparse
 
-from experiment_utils import PLUS_STATE, make_config, run_line_scan
+from src import PLUS_STATE, make_config, run_line_scan
 
 
 DATA_SUBDIR = "line"

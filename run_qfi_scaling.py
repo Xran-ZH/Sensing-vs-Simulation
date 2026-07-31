@@ -1,6 +1,6 @@
 import argparse
 
-from experiment_utils import (
+from src import (
     CHAOTIC_EVOLVED_STATE,
     GHZ_STATE,
     PLUS_STATE,

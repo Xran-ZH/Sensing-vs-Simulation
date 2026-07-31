@@ -19,10 +19,8 @@ D_B(|psi>, |phi>) = sqrt(2 * (1 - |<psi|phi>|)).
 
 ```text
 src.py
-Core math: Hamiltonians, exact evolution, product formula, QFI, simulation error.
-
-experiment_utils.py
-Shared experiment utilities: configs, initial states, data saving, line/grid/scaling runners.
+Core implementation: Hamiltonians, exact evolution, product formula, QFI, Bures
+error, configs, initial states, data saving, and reusable experiment runners.
 
 run_line.py
 Run one-dimensional perturbation scans.
@@ -84,7 +82,7 @@ hx, hy, hz    single-site fields
 Jx, Jy, Jz    nearest-neighbour couplings
 ```
 
-For example, the default TFIM-like base Hamiltonian is stored in `experiment_utils.py` as
+For example, the default TFIM-like base Hamiltonian is stored in `src.py` as
 
 ```python
 DEFAULT_H0 = {
@@ -286,7 +284,7 @@ for each state and each system size.
 
 ## Changing H0 Or Perturbations
 
-The shared defaults are in `experiment_utils.py`:
+The shared defaults are in `src.py`:
 
 ```python
 DEFAULT_H0
@@ -331,7 +329,7 @@ zzcoupling    sum_i Z_i Z_{i+1}
 
 ## Initial States
 
-Available built-in state configs are in `experiment_utils.py`:
+Available built-in state configs are in `src.py`:
 
 ```text
 PLUS_STATE
@@ -395,24 +393,28 @@ plt.show()
 
 Produced by `run_trotter_error.py`.
 
-This experiment computes the exact unitary `exp(-i H t)` and the product-formula unitary `U_PF`.
-It then defines an effective Hamiltonian by
+This experiment computes the exact one-step unitary `exp(-i H tau)` and the one-step product-formula unitary `U_PF(tau)`.
+For `H = A + B`, it uses the theoretical BCH Trotter generator `G_p`,
 
 ```text
-H_eff = (i / t) log(U_PF)
-DeltaH = H_eff - H
+G_1 = (i / 2) [A, B]
+G_2 = [A, [A, B]] / 24 + [B, [A, B]] / 12
 ```
 
-and compares the true Trotter Bures error with the local QFI prediction for the effective perturbation `DeltaH`.
+and compares the true Trotter Bures error with the local QFI prediction for the perturbation
+`H + delta * tau^p * G_p`.
 
 ```text
 orders          shape (num_orders,)
-reps            shape (num_reps,)
+step_times      shape (num_step_times,)
+tau_values      shape (num_step_times,)
 state_labels    shape (num_states,)
-trotter_error   shape (num_orders, num_states, num_reps)
-qfi_effective   shape (num_orders, num_states, num_reps)
-qfi_error       shape (num_orders, num_states, num_reps)
-ratio           shape (num_orders, num_states, num_reps)
+trotter_error   shape (num_orders, num_states, num_step_times)
+leading_generators shape (num_orders, dim, dim)
+qfi_effective   shape (num_orders, num_states, num_step_times)
+scaled_qfi      shape (num_orders, num_states, num_step_times)
+qfi_error       shape (num_orders, num_states, num_step_times)
+ratio           shape (num_orders, num_states, num_step_times)
 ```
 
 ### 2D Grid Scans

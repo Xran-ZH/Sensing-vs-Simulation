@@ -1,6 +1,6 @@
 import argparse
 
-from experiment_utils import PLUS_STATE, make_config, run_grid2d_scan
+from src import PLUS_STATE, make_config, run_grid2d_scan
 
 
 DATA_SUBDIR = "grid2d"
